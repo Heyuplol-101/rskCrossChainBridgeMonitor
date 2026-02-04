@@ -1,0 +1,290 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Rootstock Cross-Chain Bridge Monitor API",
+    "version": "1.0.0",
+    "description": "Read-only API for bridge status, historical snapshots, and anomalies used by the Rootstock Cross-Chain Bridge Monitor frontend."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4000",
+      "description": "Local development"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "tags": ["system"],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bridges": {
+      "get": {
+        "summary": "List all bridges",
+        "tags": ["bridges"],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of bridges to return (default 50, max 200)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of bridges",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Bridge"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/bridges/{id}/status": {
+      "get": {
+        "summary": "Get bridge status and latest snapshots",
+        "tags": ["bridges"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Bridge ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bridge with assets and recent snapshots",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Bridge"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid bridge id"
+          },
+          "404": {
+            "description": "Bridge not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/bridges/{id}/anomalies": {
+      "get": {
+        "summary": "List anomalies for a bridge",
+        "tags": ["anomalies"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Bridge ID"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "description": "Maximum number of anomalies to return (default 50, max 200)"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Number of anomalies to skip (for pagination)"
+          },
+          {
+            "name": "resolved",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "If true, returns resolved anomalies; otherwise returns open anomalies"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Anomalies for the bridge",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bridgeId": {
+                      "type": "integer"
+                    },
+                    "anomalies": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Anomaly"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid bridge id"
+          },
+          "404": {
+            "description": "Bridge not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Chain": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "slug": { "type": "string" },
+          "type": { "type": "string", "example": "EVM" }
+        }
+      },
+      "Asset": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "symbol": { "type": "string" },
+          "name": { "type": "string" },
+          "decimals": { "type": "integer" },
+          "contractAddress": { "type": "string", "nullable": true },
+          "isNative": { "type": "boolean" },
+          "chainId": { "type": "integer" }
+        }
+      },
+      "BridgeAssetSnapshot": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "bridgeAssetId": { "type": "integer" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "lockedBalance": { "type": "string", "description": "Bigint as string" },
+          "mintedBalance": { "type": "string", "description": "Bigint as string" },
+          "delta": { "type": "string", "description": "locked - minted, bigint as string" },
+          "status": {
+            "type": "string",
+            "enum": ["green", "yellow", "red", "unknown"]
+          }
+        }
+      },
+      "BridgeAsset": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "bridgeId": { "type": "integer" },
+          "sourceAsset": { "$ref": "#/components/schemas/Asset" },
+          "destAsset": { "$ref": "#/components/schemas/Asset" },
+          "lockAddress": { "type": "string", "nullable": true },
+          "lockContractAddress": { "type": "string", "nullable": true },
+          "mintContractAddress": { "type": "string", "nullable": true },
+          "bridgeContractAddress": { "type": "string", "nullable": true },
+          "snapshots": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BridgeAssetSnapshot" }
+          }
+        }
+      },
+      "Bridge": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "slug": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "official": { "type": "boolean" },
+          "sourceChain": { "$ref": "#/components/schemas/Chain" },
+          "destChain": { "$ref": "#/components/schemas/Chain" },
+          "bridgeAssets": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BridgeAsset" }
+          }
+        }
+      },
+      "Anomaly": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "bridgeAssetId": { "type": "integer" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "resolvedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "type": { "type": "string", "example": "mismatch" },
+          "severity": {
+            "type": "string",
+            "example": "warning",
+            "description": "e.g. info, warning, critical"
+          },
+          "details": {
+            "type": "string",
+            "nullable": true,
+            "description": "JSON string with anomaly details"
+          }
+        }
+      }
+    }
+  }
+}
+

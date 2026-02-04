@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Chain {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  type      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sourceBridges Bridge[] @relation("SourceChain")
+  destBridges   Bridge[] @relation("DestChain")
+  assets        Asset[]
+}
+
+model Bridge {
+  id            Int           @id @default(autoincrement())
+  name          String
+  slug          String        @unique
+  description   String?
+  official      Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  sourceChainId Int
+  destChainId   Int
+  sourceChain   Chain         @relation("SourceChain", fields: [sourceChainId], references: [id])
+  destChain     Chain         @relation("DestChain", fields: [destChainId], references: [id])
+
+  bridgeAssets  BridgeAsset[]
+}
+
+model Asset {
+  id              Int           @id @default(autoincrement())
+  symbol          String
+  name            String
+  decimals        Int
+  contractAddress String?
+  isNative        Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  chainId         Int
+  chain           Chain         @relation(fields: [chainId], references: [id])
+
+  @@unique([symbol, chainId], name: "symbol_chainId")
+
+  sourceBridgeAssets BridgeAsset[] @relation("SourceAsset")
+  destBridgeAssets   BridgeAsset[] @relation("DestAsset")
+}
+
+model BridgeAsset {
+  id                  Int      @id @default(autoincrement())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  bridgeId            Int
+  bridge              Bridge   @relation(fields: [bridgeId], references: [id])
+
+  sourceAssetId       Int
+  sourceAsset         Asset    @relation("SourceAsset", fields: [sourceAssetId], references: [id])
+
+  destAssetId         Int
+  destAsset           Asset    @relation("DestAsset", fields: [destAssetId], references: [id])
+
+  lockAddress         String?
+  lockContractAddress String?
+  mintContractAddress String?
+  bridgeContractAddress String? // Rootstock bridge contract address for calling getFederationAddress()
+
+  snapshots           BridgeAssetSnapshot[]
+  anomalies           Anomaly[]
+
+  @@unique([bridgeId, sourceAssetId, destAssetId], name: "bridgeId_sourceAssetId_destAssetId")
+}
+
+model BridgeAssetSnapshot {
+  id             Int       @id @default(autoincrement())
+  createdAt      DateTime  @default(now())
+
+  bridgeAssetId  Int
+  bridgeAsset    BridgeAsset @relation(fields: [bridgeAssetId], references: [id])
+
+  lockedBalance  String    // store as string to avoid bigint limits; parse in app
+  mintedBalance  String
+  delta          String
+  status         String    // "green" | "yellow" | "red"
+
+  @@index([bridgeAssetId, createdAt], name: "bridgeAsset_createdAt_idx")
+}
+
+model Anomaly {
+  id             Int       @id @default(autoincrement())
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+
+  bridgeAssetId  Int
+  bridgeAsset    BridgeAsset @relation(fields: [bridgeAssetId], references: [id])
+
+  type           String    // e.g. "mismatch", "delay", "sudden_change"
+  severity       String    // e.g. "info", "warning", "critical"
+  details        String?
+
+  @@index([bridgeAssetId, createdAt], name: "anomaly_asset_createdAt_idx")
+  @@index([bridgeAssetId, resolvedAt], name: "anomaly_asset_resolvedAt_idx")
+}
+
