@@ -128,39 +128,10 @@ async function main() {
     },
   });
 
-  /*
-  const rUSDC = await prisma.asset.upsert({
-    where: { symbol_chainId: { symbol: "rUSDC", chainId: rootstock.id } },
-    update: {
-      decimals: 18,
-      name: "USD Coin (Token Bridge)",
-    },
-    create: {
-      symbol: "rUSDC",
-      name: "USD Coin (Token Bridge)",
-      decimals: 18,
-      isNative: false,
-      contractAddress: "0xbB739A6e04d07b08E38B66ba137d0c9Cd270c750",
-      chainId: rootstock.id,
-    },
-  });
-
-  const rDAI = await prisma.asset.upsert({
-    where: { symbol_chainId: { symbol: "rDAI", chainId: rootstock.id } },
-    update: {
-      decimals: 18,
-      name: "Dai Stablecoin (Token Bridge)",
-    },
-    create: {
-      symbol: "rDAI",
-      name: "Dai Stablecoin (Token Bridge)",
-      decimals: 18,
-      isNative: false,
-      contractAddress: "0xdF63373ddb5B37F44d848532BBcA14DBf4e8aa53",
-      chainId: rootstock.id,
-    },
-  });
-  */
+  // NOTE: Additional Token Bridge side tokens such as rUSDC and rDAI are intentionally
+  // not seeded here to keep this file focused on assets that are confirmed working.
+  // When those contracts are fully deployed and verified, they can be added following
+  // the same pattern as rUSDT, or configured via a separate seed script.
 
   const doc = await prisma.asset.upsert({
     where: { symbol_chainId: { symbol: "DOC", chainId: rootstock.id } },
@@ -255,54 +226,9 @@ async function main() {
     },
   });
 
-  // NOTE: USDC and DAI bridge assets commented out - contracts return empty data (0x)
-  // These contracts may not be deployed yet or have no liquidity on Rootstock mainnet
-  // Uncomment when contracts are verified working
-  /*
-  // USDC bridge asset (Ethereum ↔ Rootstock)
-  await prisma.bridgeAsset.upsert({
-    where: {
-      bridgeId_sourceAssetId_destAssetId: {
-        bridgeId: tokenBridge.id,
-        sourceAssetId: usdcEth.id,
-        destAssetId: rUSDC.id,
-      },
-    },
-    update: {
-      lockContractAddress: "0x12ed69359919fc775bc2674860e8fe2d2b6a7b5d",
-      mintContractAddress: "0xbB739A6e04d07b08E38B66ba137d0c9Cd270c750",
-    },
-    create: {
-      bridgeId: tokenBridge.id,
-      sourceAssetId: usdcEth.id,
-      destAssetId: rUSDC.id,
-      lockContractAddress: "0x12ed69359919fc775bc2674860e8fe2d2b6a7b5d",
-      mintContractAddress: "0xbB739A6e04d07b08E38B66ba137d0c9Cd270c750",
-    },
-  });
-
-  // DAI bridge asset (Ethereum ↔ Rootstock)
-  await prisma.bridgeAsset.upsert({
-    where: {
-      bridgeId_sourceAssetId_destAssetId: {
-        bridgeId: tokenBridge.id,
-        sourceAssetId: daiEth.id,
-        destAssetId: rDAI.id,
-      },
-    },
-    update: {
-      lockContractAddress: "0x12ed69359919fc775bc2674860e8fe2d2b6a7b5d",
-      mintContractAddress: "0xdF63373ddb5B37F44d848532BBcA14DBf4e8aa53",
-    },
-    create: {
-      bridgeId: tokenBridge.id,
-      sourceAssetId: daiEth.id,
-      destAssetId: rDAI.id,
-      lockContractAddress: "0x12ed69359919fc775bc2674860e8fe2d2b6a7b5d",
-      mintContractAddress: "0xdF63373ddb5B37F44d848532BBcA14DBf4e8aa53",
-    },
-  });
-  */
+  // USDC and DAI bridge assets for the Token Bridge are intentionally not seeded yet.
+  // Refer to Rootstock Token Bridge documentation for their latest contract addresses
+  // and add them here only once the contracts are confirmed active and returning data.
 
   console.log("Database seeded with chains, assets, and bridge configuration.");
 }

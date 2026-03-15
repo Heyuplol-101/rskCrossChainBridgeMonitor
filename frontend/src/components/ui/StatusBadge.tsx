@@ -1,4 +1,3 @@
-import { getStatusColor, getStatusTextColor } from '@/lib/utils';
 import type { BridgeAssetSnapshot } from '@/lib/types';
 
 interface StatusBadgeProps {
@@ -13,7 +12,6 @@ export function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
     lg: 'w-4 h-4',
   };
 
-  // Rootstock-inspired status colors
   const statusConfig = {
     green: {
       dot: 'bg-emerald-500',

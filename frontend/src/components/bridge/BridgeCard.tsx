@@ -1,7 +1,5 @@
 import Link from 'next/link';
 import { ArrowRight, Shield } from 'lucide-react';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { formatCryptoAmount } from '@/lib/utils';
 import type { Bridge } from '@/lib/types';
 
 interface BridgeCardProps {
@@ -9,15 +7,14 @@ interface BridgeCardProps {
 }
 
 export function BridgeCard({ bridge }: BridgeCardProps) {
-  // Get latest snapshot from first bridge asset (if available from status endpoint)
-  // Note: /bridges endpoint doesn't include snapshots, so we'll show basic info
-  const bridgeAsset = bridge.bridgeAssets[0];
-  const hasData = bridgeAsset !== undefined;
+  const assets = bridge.bridgeAssets || [];
+  const hasAssets = assets.length > 0;
+  const primaryAsset = assets[0];
+  const extraAssetCount = Math.max(assets.length - 1, 0);
 
   return (
     <Link href={`/bridges/${bridge.id}`}>
       <div className="group relative overflow-hidden rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-950/40 via-pink-950/30 to-purple-950/40 p-6 shadow-lg backdrop-blur-sm transition-all hover:border-pink-500/40 hover:shadow-[0_0_20px_rgba(168,85,247,0.3)]">
-        {/* Gradient overlay on hover */}
         <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 to-pink-500/0 transition-opacity group-hover:from-purple-500/10 group-hover:to-pink-500/10" />
         
         <div className="relative flex items-start justify-between">
@@ -33,13 +30,18 @@ export function BridgeCard({ bridge }: BridgeCardProps) {
               {bridge.description || `${bridge.sourceChain.name} → ${bridge.destChain.name}`}
             </p>
             
-            {hasData && (
-              <div className="space-y-2">
-                <div className="text-xs text-purple-300/60">
-                  {bridgeAsset.sourceAsset.symbol} → {bridgeAsset.destAsset.symbol}
+            {hasAssets && primaryAsset && (
+              <div className="space-y-1 text-xs">
+                <div className="text-purple-300/70">
+                  {primaryAsset.sourceAsset.symbol} → {primaryAsset.destAsset.symbol}
                 </div>
-                <div className="text-xs text-purple-200/50">
-                  Click to view details
+                {extraAssetCount > 0 && (
+                  <div className="text-purple-300/50">
+                    +{extraAssetCount} more bridged asset{extraAssetCount > 1 ? 's' : ''}
+                  </div>
+                )}
+                <div className="text-purple-200/50">
+                  Click to view per‑asset status and history
                 </div>
               </div>
             )}

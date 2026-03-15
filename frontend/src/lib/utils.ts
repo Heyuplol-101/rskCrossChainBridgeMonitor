@@ -77,25 +77,27 @@ export function truncateAddress(address: string, length = 6): string {
 /**
  * Get status color (background)
  */
-export function getStatusColor(status: 'green' | 'yellow' | 'red'): string {
-  const colors = {
+export function getStatusColor(status: 'green' | 'yellow' | 'red' | 'unknown'): string {
+  const colors: Record<string, string> = {
     green: 'bg-green-500',
     yellow: 'bg-yellow-500',
     red: 'bg-red-500',
+    unknown: 'bg-slate-400',
   };
-  return colors[status];
+  return colors[status] ?? 'bg-slate-400';
 }
 
 /**
  * Get status text color
  */
-export function getStatusTextColor(status: 'green' | 'yellow' | 'red'): string {
-  const colors = {
+export function getStatusTextColor(status: 'green' | 'yellow' | 'red' | 'unknown'): string {
+  const colors: Record<string, string> = {
     green: 'text-green-600 dark:text-green-400',
     yellow: 'text-yellow-600 dark:text-yellow-400',
     red: 'text-red-600 dark:text-red-400',
+    unknown: 'text-slate-500 dark:text-slate-300',
   };
-  return colors[status];
+  return colors[status] ?? 'text-slate-500 dark:text-slate-300';
 }
 
 /**

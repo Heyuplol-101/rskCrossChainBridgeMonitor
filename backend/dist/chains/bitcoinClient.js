@@ -20,7 +20,7 @@ class BitcoinClient {
         return { balance: balance, raw: json };
     }
     // Bitcoin has no generic token standard; we only support native BTC here.
-    async getTokenBalance(_holder, _tokenAddress, _decimals) {
+    async getTokenBalance(_holder, _tokenAddress) {
         throw new Error("Token balances are not supported on BitcoinClient");
     }
 }

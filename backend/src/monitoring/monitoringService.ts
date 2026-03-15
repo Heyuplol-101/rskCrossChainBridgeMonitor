@@ -184,8 +184,7 @@ export class MonitoringService {
               () =>
                 sourceClient.getTokenBalance(
                   ba.lockContractAddress!,
-                  ba.sourceAsset.contractAddress!,
-                  ba.sourceAsset.decimals
+                  ba.sourceAsset.contractAddress!
                 ),
               "Token bridge getTokenBalance (locked)"
             )
@@ -327,11 +326,11 @@ export class MonitoringService {
           console.log(`[MonitoringService] Status unchanged (${status}), no new anomaly created`);
         }
       } catch (error: any) {
-        const message = error instanceof Error ? error.message : String(error);
+        const name = error instanceof Error ? error.name : "UnknownError";
         console.error(
-          `[MonitoringService] Error processing bridge asset #${ba.id} (${ba.sourceAsset.symbol} → ${ba.destAsset.symbol})`
+          `[MonitoringService] Error processing bridge asset #${ba.id} (${ba.sourceAsset.symbol} → ${ba.destAsset.symbol}) [${name}]`
         );
-        console.error("[MonitoringService] Error details:", message);
+        // In production, avoid logging full error details to prevent leaking sensitive information.
         // Continue with next bridge asset instead of crashing
       }
     }

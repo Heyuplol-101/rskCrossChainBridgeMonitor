@@ -1,6 +1,7 @@
 import express, { Request, Response } from "express";
 import { prisma } from "./prisma";
 import { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 export const createApp = () => {
   const app = express();
@@ -33,7 +34,9 @@ export const createApp = () => {
   app.get("/bridges", async (req: Request, res: Response) => {
     try {
       const limit = Math.min(Number(req.query.limit) || 50, 200);
+      const offset = Number(req.query.offset) || 0;
       const bridges = await prisma.bridge.findMany({
+        skip: offset,
         take: limit,
         include: {
           sourceChain: true,
@@ -86,7 +89,7 @@ export const createApp = () => {
       return res.json(bridge);
     } catch (error) {
       console.error("Error fetching bridge status", error);
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error instanceof PrismaClientKnownRequestError) {
         return res.status(500).json({ error: "Database error" });
       }
       return res.status(500).json({ error: "Failed to fetch bridge status" });
@@ -125,12 +128,12 @@ export const createApp = () => {
       }
 
       // Flatten anomalies from all bridge assets
-      const anomalies = bridge.bridgeAssets.flatMap((ba) => ba.anomalies);
+      const anomalies = bridge.bridgeAssets.flatMap((ba: { anomalies: any[] }) => ba.anomalies);
 
       return res.json({ bridgeId: id, anomalies });
     } catch (error) {
       console.error("Error fetching anomalies", error);
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error instanceof PrismaClientKnownRequestError) {
         return res.status(500).json({ error: "Database error" });
       }
       return res.status(500).json({ error: "Failed to fetch anomalies" });

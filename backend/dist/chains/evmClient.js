@@ -23,7 +23,7 @@ class EvmChainClient {
         const balance = await this.provider.getBalance(address);
         return { balance: BigInt(balance.toString()), raw: balance };
     }
-    async getTokenBalance(holder, tokenAddress, _decimals) {
+    async getTokenBalance(holder, tokenAddress) {
         // Normalize addresses to checksummed format
         const normalizedToken = this.normalizeAddress(tokenAddress);
         const normalizedHolder = this.normalizeAddress(holder);
@@ -32,61 +32,36 @@ class EvmChainClient {
         return { balance: BigInt(balance.toString()), raw: balance };
     }
     async getTokenTotalSupply(tokenAddress) {
-        try {
-            const normalizedToken = this.normalizeAddress(tokenAddress);
-            const contract = new ethers_1.Contract(normalizedToken, erc20Abi, this.provider);
-            const supply = await contract.totalSupply();
-            return { balance: BigInt(supply.toString()), raw: supply };
-        }
-        catch (err) {
-            console.warn(`[EvmChainClient] getTokenTotalSupply failed for ${tokenAddress}: ${err.message}`);
-            console.warn("  This may indicate: wrong network, contract doesn't exist, or non-standard ERC-20");
-            return { balance: 0n, raw: null };
-        }
+        const normalizedToken = this.normalizeAddress(tokenAddress);
+        const contract = new ethers_1.Contract(normalizedToken, erc20Abi, this.provider);
+        const supply = await contract.totalSupply();
+        return { balance: BigInt(supply.toString()), raw: supply };
     }
     async getTokenDecimals(tokenAddress) {
-        try {
-            const normalizedToken = this.normalizeAddress(tokenAddress);
-            const contract = new ethers_1.Contract(normalizedToken, erc20Abi, this.provider);
-            const decimals = await contract.decimals();
-            return Number(decimals);
-        }
-        catch (err) {
-            console.warn(`[EvmChainClient] getTokenDecimals failed for ${tokenAddress}: ${err.message}`);
-            return -1;
-        }
+        const normalizedToken = this.normalizeAddress(tokenAddress);
+        const contract = new ethers_1.Contract(normalizedToken, erc20Abi, this.provider);
+        const decimals = await contract.decimals();
+        return Number(decimals);
     }
     async getTokenSymbol(tokenAddress) {
-        try {
-            const normalizedToken = this.normalizeAddress(tokenAddress);
-            const contract = new ethers_1.Contract(normalizedToken, erc20Abi, this.provider);
-            const symbol = await contract.symbol();
-            return symbol;
-        }
-        catch (err) {
-            console.warn(`[EvmChainClient] getTokenSymbol failed for ${tokenAddress}: ${err.message}`);
-            return null;
-        }
+        const normalizedToken = this.normalizeAddress(tokenAddress);
+        const contract = new ethers_1.Contract(normalizedToken, erc20Abi, this.provider);
+        const symbol = await contract.symbol();
+        return symbol;
     }
     async verifyTokenContract(tokenAddress) {
-        try {
-            const normalizedToken = this.normalizeAddress(tokenAddress);
-            const contract = new ethers_1.Contract(normalizedToken, erc20Abi, this.provider);
-            const [decimals, symbol, totalSupply] = await Promise.all([
-                contract.decimals(),
-                contract.symbol(),
-                contract.totalSupply(),
-            ]);
-            return {
-                decimals: Number(decimals),
-                symbol: symbol,
-                totalSupply: BigInt(totalSupply.toString()),
-            };
-        }
-        catch (err) {
-            console.warn(`[EvmChainClient] verifyTokenContract failed for ${tokenAddress}: ${err.message}`);
-            return null;
-        }
+        const normalizedToken = this.normalizeAddress(tokenAddress);
+        const contract = new ethers_1.Contract(normalizedToken, erc20Abi, this.provider);
+        const [decimals, symbol, totalSupply] = await Promise.all([
+            contract.decimals(),
+            contract.symbol(),
+            contract.totalSupply(),
+        ]);
+        return {
+            decimals: Number(decimals),
+            symbol: symbol,
+            totalSupply: BigInt(totalSupply.toString()),
+        };
     }
     /**
      * Call a contract method and return the result.

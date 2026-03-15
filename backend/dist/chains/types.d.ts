@@ -5,7 +5,7 @@ export interface BalanceResult {
 }
 export interface ChainClient {
     getNativeBalance(address: string): Promise<BalanceResult>;
-    getTokenBalance(holder: string, tokenAddress: string, decimals: number): Promise<BalanceResult>;
+    getTokenBalance(holder: string, tokenAddress: string): Promise<BalanceResult>;
 }
 export interface EvmChainClientExtended extends ChainClient {
     getTokenTotalSupply?(tokenAddress: string): Promise<BalanceResult>;

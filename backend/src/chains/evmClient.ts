@@ -50,8 +50,7 @@ export class EvmChainClient implements ChainClient {
 
   async getTokenBalance(
     holder: string,
-    tokenAddress: string,
-    _decimals: number
+    tokenAddress: string
   ): Promise<BalanceResult> {
     // Normalize addresses to checksummed format
     const normalizedToken = this.normalizeAddress(tokenAddress);
@@ -66,90 +65,59 @@ export class EvmChainClient implements ChainClient {
   }
 
   async getTokenTotalSupply(tokenAddress: string): Promise<BalanceResult> {
-    try {
-      const normalizedToken = this.normalizeAddress(tokenAddress);
-      const contract = new Contract(
-        normalizedToken,
-        erc20Abi,
-        this.provider
-      ) as unknown as Erc20Contract;
-      const supply = await contract.totalSupply();
-      return { balance: BigInt(supply.toString()), raw: supply };
-    } catch (err: any) {
-      console.warn(
-        `[EvmChainClient] getTokenTotalSupply failed for ${tokenAddress}: ${err.message}`
-      );
-      console.warn(
-        "  This may indicate: wrong network, contract doesn't exist, or non-standard ERC-20"
-      );
-      return { balance: 0n, raw: null };
-    }
+    const normalizedToken = this.normalizeAddress(tokenAddress);
+    const contract = new Contract(
+      normalizedToken,
+      erc20Abi,
+      this.provider
+    ) as unknown as Erc20Contract;
+    const supply = await contract.totalSupply();
+    return { balance: BigInt(supply.toString()), raw: supply };
   }
 
   async getTokenDecimals(tokenAddress: string): Promise<number> {
-    try {
-      const normalizedToken = this.normalizeAddress(tokenAddress);
-      const contract = new Contract(
-        normalizedToken,
-        erc20Abi,
-        this.provider
-      ) as unknown as Erc20Contract;
-      const decimals = await contract.decimals();
-      return Number(decimals);
-    } catch (err: any) {
-      console.warn(
-        `[EvmChainClient] getTokenDecimals failed for ${tokenAddress}: ${err.message}`
-      );
-      return -1;
-    }
+    const normalizedToken = this.normalizeAddress(tokenAddress);
+    const contract = new Contract(
+      normalizedToken,
+      erc20Abi,
+      this.provider
+    ) as unknown as Erc20Contract;
+    const decimals = await contract.decimals();
+    return Number(decimals);
   }
 
   async getTokenSymbol(tokenAddress: string): Promise<string | null> {
-    try {
-      const normalizedToken = this.normalizeAddress(tokenAddress);
-      const contract = new Contract(
-        normalizedToken,
-        erc20Abi,
-        this.provider
-      ) as unknown as Erc20Contract;
-      const symbol = await contract.symbol();
-      return symbol as string;
-    } catch (err: any) {
-      console.warn(
-        `[EvmChainClient] getTokenSymbol failed for ${tokenAddress}: ${err.message}`
-      );
-      return null;
-    }
+    const normalizedToken = this.normalizeAddress(tokenAddress);
+    const contract = new Contract(
+      normalizedToken,
+      erc20Abi,
+      this.provider
+    ) as unknown as Erc20Contract;
+    const symbol = await contract.symbol();
+    return symbol as string;
   }
 
   async verifyTokenContract(
     tokenAddress: string
   ): Promise<{ decimals: number; symbol: string; totalSupply: bigint } | null> {
-    try {
-      const normalizedToken = this.normalizeAddress(tokenAddress);
-      const contract = new Contract(
-        normalizedToken,
-        erc20Abi,
-        this.provider
-      ) as unknown as Erc20Contract;
+    const normalizedToken = this.normalizeAddress(tokenAddress);
+    const contract = new Contract(
+      normalizedToken,
+      erc20Abi,
+      this.provider
+    ) as unknown as Erc20Contract;
 
-      const [decimals, symbol, totalSupply] = await Promise.all([
-        contract.decimals(),
-        contract.symbol(),
-        contract.totalSupply(),
-      ]);
+    const [decimals, symbol, totalSupply] = await Promise.all([
+      contract.decimals(),
+      contract.symbol(),
+      contract.totalSupply(),
+    ]);
 
-      return {
-        decimals: Number(decimals),
-        symbol: symbol as string,
-        totalSupply: BigInt(totalSupply.toString()),
-      };
-    } catch (err: any) {
-      console.warn(
-        `[EvmChainClient] verifyTokenContract failed for ${tokenAddress}: ${err.message}`
-      );
-      return null;
-    }
+    return {
+      decimals: Number(decimals),
+      symbol: symbol as string,
+      totalSupply: BigInt(totalSupply.toString()),
+    };
   }
 
   /**

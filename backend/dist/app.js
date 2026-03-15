@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.createApp = void 0;
 const express_1 = __importDefault(require("express"));
 const prisma_1 = require("./prisma");
-const client_1 = require("@prisma/client");
+const library_1 = require("@prisma/client/runtime/library");
 const createApp = () => {
     const app = (0, express_1.default)();
     app.use(express_1.default.json());
@@ -22,10 +22,19 @@ const createApp = () => {
     app.get("/health", (_req, res) => {
         res.json({ status: "ok" });
     });
+    // Minimal OpenAPI documentation endpoint for devrel and integrators
+    app.get("/docs/openapi.json", (_req, res) => {
+        // Lazy require to avoid bundling issues and keep it simple
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const spec = require("../docs/openapi.json");
+        res.json(spec);
+    });
     app.get("/bridges", async (req, res) => {
         try {
             const limit = Math.min(Number(req.query.limit) || 50, 200);
+            const offset = Number(req.query.offset) || 0;
             const bridges = await prisma_1.prisma.bridge.findMany({
+                skip: offset,
                 take: limit,
                 include: {
                     sourceChain: true,
@@ -75,7 +84,7 @@ const createApp = () => {
         }
         catch (error) {
             console.error("Error fetching bridge status", error);
-            if (error instanceof client_1.Prisma.PrismaClientKnownRequestError) {
+            if (error instanceof library_1.PrismaClientKnownRequestError) {
                 return res.status(500).json({ error: "Database error" });
             }
             return res.status(500).json({ error: "Failed to fetch bridge status" });
@@ -114,7 +123,7 @@ const createApp = () => {
         }
         catch (error) {
             console.error("Error fetching anomalies", error);
-            if (error instanceof client_1.Prisma.PrismaClientKnownRequestError) {
+            if (error instanceof library_1.PrismaClientKnownRequestError) {
                 return res.status(500).json({ error: "Database error" });
             }
             return res.status(500).json({ error: "Failed to fetch anomalies" });

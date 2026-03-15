@@ -33,7 +33,7 @@ export class BitcoinClient implements ChainClient {
   }
 
   // Bitcoin has no generic token standard; we only support native BTC here.
-  async getTokenBalance(_holder: string, _tokenAddress: string, _decimals: number): Promise<BalanceResult> {
+  async getTokenBalance(_holder: string, _tokenAddress: string): Promise<BalanceResult> {
     throw new Error("Token balances are not supported on BitcoinClient");
   }
 }

@@ -78,22 +78,12 @@ async function testCompleteFlow() {
         const mintedRBTC = Number(rbtcBalance) / 1e18;
         console.log(`ℹ️  PowPeg contract balance: ${mintedRBTC} RBTC`);
         console.log(`   (Note: This is just the contract balance, not total minted)`);
-        // Step 4: Compute status
-        console.log("\n📊 Step 4: Compute Bridge Status");
+        // Step 4: Illustrative delta only (NOT a solvency check)
+        console.log("\n📊 Step 4: Illustrative Delta (NOT a solvency check)");
         console.log("-".repeat(80));
-        const delta = lockedBTC - mintedRBTC;
-        const deltaPct = lockedBTC > 0 ? (Math.abs(delta) / lockedBTC) * 100 : 0;
-        let status = "green";
-        if (Math.abs(deltaPct) > 10) {
-            status = "red";
-        }
-        else if (Math.abs(deltaPct) > 5) {
-            status = "yellow";
-        }
         console.log(`Locked BTC:  ${lockedBTC} BTC`);
         console.log(`Minted RBTC: ${mintedRBTC} RBTC (approx)`);
-        console.log(`Delta:       ${delta.toFixed(8)} (${deltaPct.toFixed(2)}%)`);
-        console.log(`Status:      ${status.toUpperCase()}`);
+        console.log("⚠️  Note: PowPeg uses native RBTC, so this comparison is illustrative only and is NOT a true solvency metric.");
         // Step 5: Additional PowPeg info
         console.log("\n🔍 Step 5: Additional PowPeg Info");
         console.log("-".repeat(80));

@@ -4,7 +4,7 @@ export declare class EvmChainClient implements ChainClient {
     constructor(rpcUrl: string);
     private normalizeAddress;
     getNativeBalance(address: string): Promise<BalanceResult>;
-    getTokenBalance(holder: string, tokenAddress: string, _decimals: number): Promise<BalanceResult>;
+    getTokenBalance(holder: string, tokenAddress: string): Promise<BalanceResult>;
     getTokenTotalSupply(tokenAddress: string): Promise<BalanceResult>;
     getTokenDecimals(tokenAddress: string): Promise<number>;
     getTokenSymbol(tokenAddress: string): Promise<string | null>;

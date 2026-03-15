@@ -133,7 +133,7 @@ class MonitoringService {
                 }
                 else if (ba.lockContractAddress && ba.sourceAsset.contractAddress) {
                     console.log("[MonitoringService] Token bridge (ERC-20)");
-                    lockedBalance = (await this.withRetries(() => sourceClient.getTokenBalance(ba.lockContractAddress, ba.sourceAsset.contractAddress, ba.sourceAsset.decimals), "Token bridge getTokenBalance (locked)")).balance;
+                    lockedBalance = (await this.withRetries(() => sourceClient.getTokenBalance(ba.lockContractAddress, ba.sourceAsset.contractAddress), "Token bridge getTokenBalance (locked)")).balance;
                     console.log(`[MonitoringService] Locked tokens: ${Number(lockedBalance) / 10 ** ba.sourceAsset.decimals}`);
                     // Minted balance on destination chain
                     if (ba.mintContractAddress && destClient instanceof evmClient_1.EvmChainClient) {
@@ -254,9 +254,9 @@ class MonitoringService {
                 }
             }
             catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                console.error(`[MonitoringService] Error processing bridge asset #${ba.id} (${ba.sourceAsset.symbol} → ${ba.destAsset.symbol})`);
-                console.error("[MonitoringService] Error details:", message);
+                const name = error instanceof Error ? error.name : "UnknownError";
+                console.error(`[MonitoringService] Error processing bridge asset #${ba.id} (${ba.sourceAsset.symbol} → ${ba.destAsset.symbol}) [${name}]`);
+                // In production, avoid logging full error details to prevent leaking sensitive information.
                 // Continue with next bridge asset instead of crashing
             }
         }
