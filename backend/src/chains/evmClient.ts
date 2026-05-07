@@ -44,7 +44,11 @@ export class EvmChainClient implements ChainClient {
   }
 
   async getNativeBalance(address: string): Promise<BalanceResult> {
-    const balance = await this.provider.getBalance(address);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("RPC timeout")), config.RPC_TIMEOUT_MS);
+    });
+    const balancePromise = this.provider.getBalance(address);
+    const balance = await Promise.race([balancePromise, timeoutPromise]);
     return { balance: BigInt(balance.toString()), raw: balance };
   }
 
@@ -52,7 +56,9 @@ export class EvmChainClient implements ChainClient {
     holder: string,
     tokenAddress: string
   ): Promise<BalanceResult> {
-    // Normalize addresses to checksummed format
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("RPC timeout")), config.RPC_TIMEOUT_MS);
+    });
     const normalizedToken = this.normalizeAddress(tokenAddress);
     const normalizedHolder = this.normalizeAddress(holder);
     const contract = new Contract(
@@ -60,46 +66,62 @@ export class EvmChainClient implements ChainClient {
       erc20Abi,
       this.provider
     ) as unknown as Erc20Contract;
-    const balance = await contract.balanceOf(normalizedHolder);
+    const balancePromise = contract.balanceOf(normalizedHolder);
+    const balance = await Promise.race([balancePromise, timeoutPromise]);
     return { balance: BigInt(balance.toString()), raw: balance };
   }
 
   async getTokenTotalSupply(tokenAddress: string): Promise<BalanceResult> {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("RPC timeout")), config.RPC_TIMEOUT_MS);
+    });
     const normalizedToken = this.normalizeAddress(tokenAddress);
     const contract = new Contract(
       normalizedToken,
       erc20Abi,
       this.provider
     ) as unknown as Erc20Contract;
-    const supply = await contract.totalSupply();
+    const supplyPromise = contract.totalSupply();
+    const supply = await Promise.race([supplyPromise, timeoutPromise]);
     return { balance: BigInt(supply.toString()), raw: supply };
   }
 
   async getTokenDecimals(tokenAddress: string): Promise<number> {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("RPC timeout")), config.RPC_TIMEOUT_MS);
+    });
     const normalizedToken = this.normalizeAddress(tokenAddress);
     const contract = new Contract(
       normalizedToken,
       erc20Abi,
       this.provider
     ) as unknown as Erc20Contract;
-    const decimals = await contract.decimals();
+    const decimalsPromise = contract.decimals();
+    const decimals = await Promise.race([decimalsPromise, timeoutPromise]);
     return Number(decimals);
   }
 
   async getTokenSymbol(tokenAddress: string): Promise<string | null> {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("RPC timeout")), config.RPC_TIMEOUT_MS);
+    });
     const normalizedToken = this.normalizeAddress(tokenAddress);
     const contract = new Contract(
       normalizedToken,
       erc20Abi,
       this.provider
     ) as unknown as Erc20Contract;
-    const symbol = await contract.symbol();
+    const symbolPromise = contract.symbol();
+    const symbol = await Promise.race([symbolPromise, timeoutPromise]);
     return symbol as string;
   }
 
   async verifyTokenContract(
     tokenAddress: string
   ): Promise<{ decimals: number; symbol: string; totalSupply: bigint } | null> {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("RPC timeout")), config.RPC_TIMEOUT_MS);
+    });
     const normalizedToken = this.normalizeAddress(tokenAddress);
     const contract = new Contract(
       normalizedToken,
@@ -107,12 +129,13 @@ export class EvmChainClient implements ChainClient {
       this.provider
     ) as unknown as Erc20Contract;
 
-    const [decimals, symbol, totalSupply] = await Promise.all([
+    const promises = [
       contract.decimals(),
       contract.symbol(),
       contract.totalSupply(),
-    ]);
-
+    ];
+    const resultsPromise = Promise.all(promises);
+    const [decimals, symbol, totalSupply] = await Promise.race([resultsPromise, timeoutPromise.then(() => Promise.reject(new Error("RPC timeout")))]);
     return {
       decimals: Number(decimals),
       symbol: symbol as string,
@@ -130,6 +153,9 @@ export class EvmChainClient implements ChainClient {
     methodName: string,
     params: unknown[] = []
   ): Promise<T> {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("RPC timeout")), config.RPC_TIMEOUT_MS);
+    });
     const normalizedAddress = this.normalizeAddress(contractAddress);
     const contract = new Contract(
       normalizedAddress,
@@ -140,7 +166,8 @@ export class EvmChainClient implements ChainClient {
     if (typeof fn !== "function") {
       throw new Error(`Method ${methodName} not found on contract ${normalizedAddress}`);
     }
-    const result = await fn(...params);
+    const resultPromise = fn(...params);
+    const result = await Promise.race([resultPromise, timeoutPromise]);
     return result as T;
   }
 
@@ -155,33 +182,31 @@ export class EvmChainClient implements ChainClient {
    *    - Has getFederation() -> returns Federation contract address (address)
    */
   async getFederationAddress(bridgeContractAddress: string): Promise<string> {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("RPC timeout")), config.RPC_TIMEOUT_MS);
+    });
     try {
       const normalizedBridge = this.normalizeAddress(bridgeContractAddress);
       const POWPEG_ADDRESS = "0x0000000000000000000000000000000001000006";
 
-      // Check if this is PowPeg precompiled contract
       if (normalizedBridge.toLowerCase() === POWPEG_ADDRESS.toLowerCase()) {
-        // PowPeg: Call getFederationAddress() directly - returns Bitcoin address
         const powpegContract = new Contract(
           POWPEG_ADDRESS,
           powpegAbi,
           this.provider
         ) as unknown as PowpegContract;
-        const bitcoinAddress = await powpegContract.getFederationAddress();
-        console.log(`[EvmChainClient] PowPeg Bitcoin address: ${bitcoinAddress}`);
+        const bitcoinAddressPromise = powpegContract.getFederationAddress();
+        const bitcoinAddress = await Promise.race([bitcoinAddressPromise, timeoutPromise]);
         return bitcoinAddress as string;
       } else {
-        // Token Bridge: Get Federation contract address first
         const federationAbi = ["function getFederation() view returns (address)"];
         const bridgeContract = new Contract(
           normalizedBridge,
           federationAbi,
           this.provider
         ) as unknown as FederationBridgeContract;
-        const federationContractAddress = await bridgeContract.getFederation();
-        console.log(
-          `[EvmChainClient] Token Bridge Federation address: ${federationContractAddress}`
-        );
+        const federationContractAddressPromise = bridgeContract.getFederation();
+        const federationContractAddress = await Promise.race([federationContractAddressPromise, timeoutPromise]);
         return federationContractAddress as string;
       }
     } catch (err: any) {

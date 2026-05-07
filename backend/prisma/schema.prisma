@@ -92,7 +92,7 @@ model BridgeAssetSnapshot {
   lockedBalance  String    // store as string to avoid bigint limits; parse in app
   mintedBalance  String
   delta          String
-  status         String    // "green" | "yellow" | "red"
+  status         String    // "green" | "yellow" | "red" | "unknown"
 
   @@index([bridgeAssetId, createdAt], name: "bridgeAsset_createdAt_idx")
 }

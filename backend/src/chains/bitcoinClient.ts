@@ -17,19 +17,26 @@ export class BitcoinClient implements ChainClient {
   }
 
   async getNativeBalance(address: string): Promise<BalanceResult> {
-    const url = `${this.baseUrl}/address/${address}`;
-    const { body, statusCode } = await request(url);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), config.RPC_TIMEOUT_MS);
 
-    if (statusCode !== 200) {
-      throw new Error(`Bitcoin API error: ${statusCode}`);
+    try {
+      const url = `${this.baseUrl}/address/${address}`;
+      const { body, statusCode } = await request(url, { signal: controller.signal });
+
+      if (statusCode !== 200) {
+        throw new Error(`Bitcoin API error: ${statusCode}`);
+      }
+
+      const json = (await body.json()) as MempoolAddressResponse;
+      const funded = BigInt(json.chain_stats.funded_txo_sum);
+      const spent = BigInt(json.chain_stats.spent_txo_sum);
+      const balance = funded - spent;
+
+      return { balance: balance as Bigish, raw: json };
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    const json = (await body.json()) as MempoolAddressResponse;
-    const funded = BigInt(json.chain_stats.funded_txo_sum);
-    const spent = BigInt(json.chain_stats.spent_txo_sum);
-    const balance = funded - spent;
-
-    return { balance: balance as Bigish, raw: json };
   }
 
   // Bitcoin has no generic token standard; we only support native BTC here.

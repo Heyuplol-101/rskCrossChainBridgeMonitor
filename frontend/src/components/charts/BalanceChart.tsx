@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
+import { formatUnits } from "ethers";
 import { formatCryptoAmount, formatFullDate } from '@/lib/utils';
 import type { BridgeAssetSnapshot } from '@/lib/types';
 
@@ -41,8 +32,8 @@ export function BalanceChart({
   const data = snapshots.map((snapshot) => ({
     timestamp: new Date(snapshot.createdAt).getTime(),
     date: formatFullDate(snapshot.createdAt),
-    locked: Number(snapshot.lockedBalance) / Math.pow(10, sourceDecimals),
-    minted: Number(snapshot.mintedBalance) / Math.pow(10, destDecimals),
+    locked: parseFloat(formatUnits(snapshot.lockedBalance, sourceDecimals)),
+    minted: parseFloat(formatUnits(snapshot.mintedBalance, destDecimals)),
     status: snapshot.status,
   }));
 

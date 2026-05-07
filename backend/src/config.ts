@@ -31,6 +31,13 @@ if (Number.isNaN(BRIDGE_YELLOW_THRESHOLD) || Number.isNaN(BRIDGE_RED_THRESHOLD))
   throw new Error("BRIDGE_YELLOW_THRESHOLD and BRIDGE_RED_THRESHOLD must be valid numbers");
 }
 
+const RPC_TIMEOUT_MS_RAW = getEnv("RPC_TIMEOUT_MS") ?? "30000";
+const RPC_TIMEOUT_MS = Number(RPC_TIMEOUT_MS_RAW);
+
+if (Number.isNaN(RPC_TIMEOUT_MS)) {
+  throw new Error("RPC_TIMEOUT_MS must be a valid number");
+}
+
 export const config = {
   PORT,
   DATABASE_URL: getEnv("DATABASE_URL", { required: true }) as string,
@@ -41,6 +48,7 @@ export const config = {
   MONITOR_POLL_INTERVAL_MS,
   BRIDGE_YELLOW_THRESHOLD,
   BRIDGE_RED_THRESHOLD,
+  RPC_TIMEOUT_MS,
 };
 
 

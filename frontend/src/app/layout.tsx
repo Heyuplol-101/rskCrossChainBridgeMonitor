@@ -29,7 +29,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#05020a] text-zinc-50`}
       >
-        <QueryProvider>{children}</QueryProvider>
+        <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 bg-purple-600 text-white p-2 z-50">
+          Skip to main content
+        </a>
+        <main id="main">
+          <QueryProvider>{children}</QueryProvider>
+        </main>
       </body>
     </html>
   );

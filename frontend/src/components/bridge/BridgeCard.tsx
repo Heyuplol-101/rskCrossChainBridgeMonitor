@@ -13,9 +13,9 @@ export function BridgeCard({ bridge }: BridgeCardProps) {
   const extraAssetCount = Math.max(assets.length - 1, 0);
 
   return (
-    <Link href={`/bridges/${bridge.id}`}>
-      <div className="group relative overflow-hidden rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-950/40 via-pink-950/30 to-purple-950/40 p-6 shadow-lg backdrop-blur-sm transition-all hover:border-pink-500/40 hover:shadow-[0_0_20px_rgba(168,85,247,0.3)]">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 to-pink-500/0 transition-opacity group-hover:from-purple-500/10 group-hover:to-pink-500/10" />
+    <Link href={`/bridges/${bridge.id}`} aria-label={`View details for ${bridge.name} bridge`}>
+      <div className="group relative overflow-hidden rounded-xl border border-purple-500/20 bg-linear-to-br from-purple-950/40 via-pink-950/30 to-purple-950/40 p-6 shadow-lg backdrop-blur-sm transition-all hover:border-pink-500/40 hover:shadow-[0_0_20px_rgba(168,85,247,0.3)]">
+        <div className="absolute inset-0 bg-linear-to-br from-purple-500/0 to-pink-500/0 transition-opacity group-hover:from-purple-500/10 group-hover:to-pink-500/10" />
         
         <div className="relative flex items-start justify-between">
           <div className="flex-1">

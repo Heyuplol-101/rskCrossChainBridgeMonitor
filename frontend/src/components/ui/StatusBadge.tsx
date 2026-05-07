@@ -41,6 +41,7 @@ export function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
     <div className="flex items-center gap-2">
       <div
         className={`${config.dot} ${sizeClasses[size]} rounded-full ${config.glow}`}
+        aria-hidden="true"
       />
       <span className={`${config.text} font-medium capitalize text-sm`}>
         {status === 'unknown' ? 'unverified' : status}

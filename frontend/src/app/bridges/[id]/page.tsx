@@ -147,7 +147,7 @@ export default function BridgeDetailPage({ params }: BridgeDetailPageProps) {
             );
           })}
 
-          <section>
+          <section aria-live="polite">
             <h2 className="mb-4 text-2xl font-semibold text-white">Recent Anomalies</h2>
             {anomaliesLoading ? (
               <LoadingSpinner />

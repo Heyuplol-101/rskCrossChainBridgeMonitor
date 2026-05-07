@@ -3,6 +3,9 @@ import { createApp } from "./app";
 import { prisma } from "./prisma";
 import { MonitoringService } from "./monitoring/monitoringService";
 import { StatusContext } from "./monitoring/status";
+import pino from "pino";
+
+const logger = pino({ level: process.env.LOG_LEVEL || "info" });
 
 const app = createApp();
 
@@ -17,32 +20,32 @@ let monitoringInterval: NodeJS.Timeout | null = null;
 
 async function start() {
   const server = app.listen(config.PORT, () => {
-    console.log(`Backend server listening on port ${config.PORT}`);
+    logger.info(`Backend server listening on port ${config.PORT}`);
   });
 
   // kick off initial monitoring tick and schedule periodic polling
   try {
     await monitoringService.runOnce();
   } catch (err) {
-    console.error("Initial monitoring run failed", err);
+    logger.error("Initial monitoring run failed", err);
   }
 
   monitoringInterval = setInterval(() => {
     monitoringService
       .runOnce()
-      .catch((err) => console.error("Monitoring tick failed", err));
+      .catch((err) => logger.error("Monitoring tick failed", err));
   }, config.MONITOR_POLL_INTERVAL_MS);
 
   // Graceful shutdown
   const shutdown = async () => {
-    console.log("Shutting down gracefully...");
+    logger.info("Shutting down gracefully...");
     if (monitoringInterval) {
       clearInterval(monitoringInterval);
     }
     server.close(async () => {
-      console.log("HTTP server closed");
+      logger.info("HTTP server closed");
       await prisma.$disconnect();
-      console.log("Database disconnected");
+      logger.info("Database disconnected");
       process.exit(0);
     });
   };

@@ -1,23 +1,42 @@
 import express, { Request, Response } from "express";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 import { prisma } from "./prisma";
 import { Prisma } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+import pino from "pino";
+
+const logger = pino({ level: process.env.LOG_LEVEL || "info" });
 
 export const createApp = () => {
   const app = express();
 
-  app.use(express.json());
-  app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", process.env.CORS_ORIGIN ?? "*");
-    res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+      },
+    },
+  }));
 
-    if (req.method === "OPTIONS") {
-      return res.sendStatus(204);
-    }
+  const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
+  app.use(cors({
+    origin: corsOrigin.split(",").map(o => o.trim()),
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type"],
+  }));
 
-    return next();
+  const limiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    message: "Too many requests from this IP, please try again later.",
   });
+  app.use(limiter);
+
+  app.use(express.json());
 
   app.get("/health", (_req: Request, res: Response) => {
     res.json({ status: "ok" });
@@ -52,7 +71,7 @@ export const createApp = () => {
 
       res.json(bridges);
     } catch (error) {
-      console.error("Error fetching bridges", error);
+      logger.error("Error fetching bridges", error);
       res.status(500).json({ error: "Failed to fetch bridges" });
     }
   });
@@ -88,7 +107,7 @@ export const createApp = () => {
 
       return res.json(bridge);
     } catch (error) {
-      console.error("Error fetching bridge status", error);
+      logger.error("Error fetching bridge status", error);
       if (error instanceof PrismaClientKnownRequestError) {
         return res.status(500).json({ error: "Database error" });
       }
@@ -111,14 +130,7 @@ export const createApp = () => {
         where: { id },
         include: {
           bridgeAssets: {
-            include: {
-              anomalies: {
-                where: resolved ? { resolvedAt: { not: null } } : { resolvedAt: null },
-                orderBy: { createdAt: "desc" },
-                skip: offset,
-                take: limit,
-              },
-            },
+            select: { id: true },
           },
         },
       });
@@ -127,12 +139,21 @@ export const createApp = () => {
         return res.status(404).json({ error: "Bridge not found" });
       }
 
-      // Flatten anomalies from all bridge assets
-      const anomalies = bridge.bridgeAssets.flatMap((ba: { anomalies: any[] }) => ba.anomalies);
+      const bridgeAssetIds = bridge.bridgeAssets.map(ba => ba.id);
+
+      const anomalies = await prisma.anomaly.findMany({
+        where: {
+          bridgeAssetId: { in: bridgeAssetIds },
+          resolvedAt: resolved ? { not: null } : null,
+        },
+        orderBy: { createdAt: "desc" },
+        skip: offset,
+        take: limit,
+      });
 
       return res.json({ bridgeId: id, anomalies });
     } catch (error) {
-      console.error("Error fetching anomalies", error);
+      logger.error("Error fetching anomalies", error);
       if (error instanceof PrismaClientKnownRequestError) {
         return res.status(500).json({ error: "Database error" });
       }

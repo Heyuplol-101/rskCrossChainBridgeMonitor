@@ -2,6 +2,9 @@ import { PrismaClient } from "@prisma/client";
 import { chainRegistry } from "../chains";
 import { computeStatus, StatusContext } from "./status";
 import { EvmChainClient } from "../chains/evmClient";
+import pino from "pino";
+
+const logger = pino({ level: process.env.LOG_LEVEL || "info" });
 
 export class MonitoringService {
   private prisma: PrismaClient;
@@ -34,8 +37,9 @@ export class MonitoringService {
       } catch (err) {
         lastError = err;
         const message = err instanceof Error ? err.message : String(err);
-        console.warn(
-          `[MonitoringService] ${label} failed (attempt ${attempt}/${maxAttempts}): ${message}`
+        logger.warn(
+          { attempt, maxAttempts, label },
+          `${label} failed: ${message}`
         );
         if (attempt < maxAttempts) {
           await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -48,7 +52,7 @@ export class MonitoringService {
   }
 
   async runOnce(): Promise<void> {
-    console.log("\n[MonitoringService] Starting monitoring cycle...");
+    logger.info("Starting monitoring cycle");
     
     const bridgeAssets = await this.prisma.bridgeAsset.findMany({
       include: {
@@ -63,11 +67,11 @@ export class MonitoringService {
       },
     });
 
-    console.log(`[MonitoringService] Found ${bridgeAssets.length} bridge assets to monitor`);
+    logger.info({ count: bridgeAssets.length }, "Found bridge assets to monitor");
 
     for (const ba of bridgeAssets) {
       try {
-        console.log(`\n[MonitoringService] Processing bridge asset #${ba.id}: ${ba.sourceAsset.symbol} → ${ba.destAsset.symbol}`);
+        logger.info({ bridgeAssetId: ba.id, source: ba.sourceAsset.symbol, dest: ba.destAsset.symbol }, "Processing bridge asset");
         
         const sourceClient = chainRegistry.getClient(ba.bridge.sourceChain.slug);
         const destClient = chainRegistry.getClient(ba.bridge.destChain.slug);
@@ -81,7 +85,7 @@ export class MonitoringService {
           ba.bridge.sourceChain.type === "BITCOIN";
 
         if (isPowPeg) {
-          console.log("[MonitoringService] Detected PowPeg bridge");
+          logger.info("Detected PowPeg bridge");
 
           if (destClient instanceof EvmChainClient) {
             try {
@@ -89,7 +93,7 @@ export class MonitoringService {
                 () => destClient.getFederationAddress(ba.bridgeContractAddress!),
                 "PowPeg getFederationAddress"
               );
-              console.log(`[MonitoringService] PowPeg Bitcoin address: ${lockAddress}`);
+              logger.info({ address: lockAddress }, "PowPeg Bitcoin address");
               
               // Update lockAddress in DB for caching
               if (lockAddress && lockAddress !== ba.lockAddress) {
@@ -97,12 +101,12 @@ export class MonitoringService {
                   where: { id: ba.id },
                   data: { lockAddress },
                 });
-                console.log(`[MonitoringService] Updated cached lock address`);
+                logger.info("Updated cached lock address");
               }
             } catch (err: any) {
-              console.warn(`[MonitoringService] Failed to get PowPeg address: ${err.message}`);
+              logger.warn({ error: err.message }, "Failed to get PowPeg address");
               if (!ba.lockAddress) {
-                console.warn(`[MonitoringService] No cached address, skipping`);
+                logger.warn("No cached address, skipping");
                 continue;
               }
               lockAddress = ba.lockAddress;
@@ -110,7 +114,7 @@ export class MonitoringService {
           }
 
           if (!lockAddress) {
-            console.warn(`[MonitoringService] No lock address available, skipping`);
+            logger.warn("No lock address available, skipping");
             continue;
           }
           
@@ -120,14 +124,14 @@ export class MonitoringService {
               "PowPeg BTC getNativeBalance"
             )
           ).balance;
-          console.log(`[MonitoringService] Locked BTC: ${Number(lockedBalance) / 1e8} BTC`);
+          logger.info({ btc: Number(lockedBalance) / 1e8 }, "Locked BTC");
 
           mintedBalance = 0n;
-          console.warn(`[MonitoringService] RBTC is native - circulating supply not available on-chain`);
-          console.warn(`[MonitoringService] Use external API (CoinGecko/DefiLlama) for accurate comparison`);
+          logger.warn("RBTC is native - circulating supply not available on-chain");
+          logger.warn("Use external API (CoinGecko/DefiLlama) for accurate comparison");
         }
         else if (ba.bridgeContractAddress && ba.bridge.sourceChain.type === "BITCOIN") {
-          console.log("[MonitoringService] Non-PowPeg Bitcoin bridge detected");
+          logger.info("Non-PowPeg Bitcoin bridge detected");
           
           if (destClient instanceof EvmChainClient) {
             try {
@@ -142,7 +146,7 @@ export class MonitoringService {
                 });
               }
             } catch (err: any) {
-              console.warn(`[MonitoringService] Dynamic lookup failed: ${err.message}`);
+              logger.warn({ error: err.message }, "Dynamic lookup failed");
               if (!ba.lockAddress) {
                 continue;
               }
@@ -177,7 +181,7 @@ export class MonitoringService {
           }
         }
         else if (ba.lockContractAddress && ba.sourceAsset.contractAddress) {
-          console.log("[MonitoringService] Token bridge (ERC-20)");
+          logger.info("Token bridge (ERC-20)");
           
           lockedBalance = (
             await this.withRetries(
@@ -189,7 +193,7 @@ export class MonitoringService {
               "Token bridge getTokenBalance (locked)"
             )
           ).balance;
-          console.log(`[MonitoringService] Locked tokens: ${Number(lockedBalance) / 10**ba.sourceAsset.decimals}`);
+          logger.info({ tokens: Number(lockedBalance) / 10**ba.sourceAsset.decimals }, "Locked tokens");
 
           // Minted balance on destination chain
           if (ba.mintContractAddress && destClient instanceof EvmChainClient) {
@@ -199,25 +203,20 @@ export class MonitoringService {
             );
             mintedBalance = result.balance;
             
-            if (mintedBalance === 0n && result.raw === null) {
-              // totalSupply() failed - try to verify the token contract
-              console.warn(`[MonitoringService] totalSupply() returned 0 or failed for ${ba.mintContractAddress}`);
+            if (mintedBalance === 0n) {
               const tokenInfo = await destClient.verifyTokenContract(ba.mintContractAddress);
               if (tokenInfo) {
-                console.log(`[MonitoringService] Token verified: ${tokenInfo.symbol} with ${tokenInfo.decimals} decimals`);
                 mintedBalance = tokenInfo.totalSupply;
-              } else {
-                console.warn(`[MonitoringService] Token contract verification failed - may not be deployed or non-standard ERC-20`);
               }
             }
             
-            console.log(`[MonitoringService] Minted tokens: ${Number(mintedBalance) / 10**ba.destAsset.decimals}`);
+            logger.info({ tokens: Number(mintedBalance) / 10**ba.destAsset.decimals }, "Minted tokens");
           } else {
             mintedBalance = 0n;
-            console.warn(`[MonitoringService] No mint contract address, using 0`);
+            logger.info("No mint contract address, using 0");
           }
         } else {
-          console.warn(`[MonitoringService] No valid configuration for this bridge asset, skipping`);
+          logger.warn("No valid configuration for this bridge asset, skipping");
           continue;
         }
 
@@ -251,7 +250,7 @@ export class MonitoringService {
 
         const { status, deltaPercent } = statusResult;
 
-        console.log(`[MonitoringService] Status: ${status.toUpperCase()} (${deltaPercent.toFixed(2)}% discrepancy)`);
+        logger.info({ status: status.toUpperCase(), discrepancy: deltaPercent.toFixed(2) }, "Status");
 
         // Create snapshot
         await this.prisma.bridgeAssetSnapshot.create({
@@ -291,9 +290,7 @@ export class MonitoringService {
             },
           });
           if (count > 0) {
-            console.log(
-              `[MonitoringService] ✅ Resolved ${count} open anomalies for bridge asset #${ba.id} (status back to GREEN)`
-            );
+            logger.info({ count }, "Resolved open anomalies for bridge asset");
           }
         }
 
@@ -319,22 +316,18 @@ export class MonitoringService {
               }),
             },
           });
-          console.log(`[MonitoringService] 🚨 Anomaly created: ${message}`);
+          logger.warn({ message }, "Anomaly created");
         } else if (isPowPegWithZeroMinted) {
-          console.log(`[MonitoringService] Skipping anomaly for PowPeg (RBTC native currency - minted balance unavailable)`);
+          logger.info("Skipping anomaly for PowPeg (RBTC native currency - minted balance unavailable)");
         } else if (status !== "green") {
-          console.log(`[MonitoringService] Status unchanged (${status}), no new anomaly created`);
+          logger.info({ status }, "Status unchanged, no new anomaly created");
         }
       } catch (error: any) {
         const name = error instanceof Error ? error.name : "UnknownError";
-        console.error(
-          `[MonitoringService] Error processing bridge asset #${ba.id} (${ba.sourceAsset.symbol} → ${ba.destAsset.symbol}) [${name}]`
-        );
-        // In production, avoid logging full error details to prevent leaking sensitive information.
-        // Continue with next bridge asset instead of crashing
+        logger.error({ bridgeAssetId: ba.id, source: ba.sourceAsset.symbol, dest: ba.destAsset.symbol, error: name }, "Error processing bridge asset");
       }
     }
 
-    console.log("[MonitoringService] Monitoring cycle complete\n");
+    logger.info("Monitoring cycle complete");
   }
 }
